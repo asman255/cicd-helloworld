@@ -1,0 +1,30 @@
+name: Deploy to EC and build Docker image
+on:
+  push:
+    branches:
+      - main 
+
+jobs:
+  deploy:
+    runs-on: ubuntu-lastest
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key.pem
+          chmod 600 provate_key.pem
+          ssh -o StrictHostKeyChecking=no -i private_key.pem $USER@$HOST << 'EOF'
+            cd /home/ec2-user/cicd-helloworld
+            git pull origin main
+            docker build -t react-app .
+            docker stop react-app || true
+            docker rm react-amm || true
+            docker run -d -p 80:80 --name react-app react-app
+          EOF
